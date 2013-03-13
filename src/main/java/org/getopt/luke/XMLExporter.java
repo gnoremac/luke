@@ -3,6 +3,7 @@ package org.getopt.luke;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.*;
+import org.apache.lucene.index.FieldInfo.DocValuesType;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Bits;
@@ -181,17 +182,25 @@ public class XMLExporter extends Observable {
         continue;
       }
       bw.write("<field name='" + Util.xmlEscape(fields[0].name()));
-      DocValues dv = atomicReader.normValues(fields[0].name());
+      DocValuesType dv = fields[0].fieldType().docValueType();
       if (dv != null) {
         // export raw value - we don't know what similarity was used
-        String type = dv.getType().toString();
-        if (type.contains("INT")) {
-          bw.write("' norm='" + dv.getSource().getInt(docNum));
-        } else if (type.startsWith("FLOAT")) {
-          bw.write("' norm='" + dv.getSource().getFloat(docNum));          
-        } else if (type.startsWith("BYTES")) {
-          dv.getSource().getBytes(docNum, bytes);
-          bw.write("' norm='" + Util.bytesToHex(bytes, false));
+        switch(dv) {
+            case NUMERIC:
+                NumericDocValues numericDocValues = atomicReader.getNumericDocValues(fields[0].name());
+                bw.write("' norm='" + numericDocValues.get(docNum));
+                break;
+            case BINARY:
+                BinaryDocValues binaryDocValues = atomicReader.getBinaryDocValues(fields[0].name());
+                binaryDocValues.get(docNum, bytes);
+                bw.write("' norm='" + Util.bytesToHex(bytes, false));
+                break;
+            case SORTED:
+                SortedDocValues sortedDocValues = atomicReader.getSortedDocValues(fields[0].name());
+                sortedDocValues.get(docNum, bytes);
+                bw.write("' norm='" + Util.bytesToHex(bytes, false));
+            default:
+                throw new IllegalStateException("unknown type:" + dv);
         }
       } 
       bw.write("' flags='" + Util.fieldFlags((Field)fields[0], infos.fieldInfo(fields[0].name())) + "'>\n");

@@ -16,6 +16,50 @@
  */
 package org.getopt.luke;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.ClipboardOwner;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Observable;
+import java.util.Observer;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.zip.GZIPOutputStream;
+
+import javax.swing.JFileChooser;
+import javax.swing.UIManager;
+
 import org.apache.lucene.LucenePackage;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.core.SimpleAnalyzer;
@@ -28,24 +72,84 @@ import org.apache.lucene.document.DateTools;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.AtomicReader;
+import org.apache.lucene.index.AtomicReaderContext;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.CheckIndex;
 import org.apache.lucene.index.CheckIndex.Status.SegmentInfoStatus;
+import org.apache.lucene.index.CompositeReader;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocsAndPositionsEnum;
+import org.apache.lucene.index.DocsEnum;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfo.IndexOptions;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexCommit;
+import org.apache.lucene.index.IndexDeletionPolicy;
+import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.IndexGate;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.index.LogMergePolicy;
+import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.MultiFields;
+import org.apache.lucene.index.MultiReader;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SegmentInfoPerCommit;
+import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.index.SlowCompositeReaderWrapper;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.misc.SweetSpotSimilarity;
 import org.apache.lucene.queries.mlt.MoreLikeThis;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.queryparser.xml.CoreParser;
 import org.apache.lucene.queryparser.xml.CorePlusExtensionsParser;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.AutomatonQuery;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.ConstantScoreQuery;
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FilteredQuery;
+import org.apache.lucene.search.FuzzyQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MultiPhraseQuery;
+import org.apache.lucene.search.MultiTermQuery;
+import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TermRangeQuery;
+import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.payloads.PayloadNearQuery;
 import org.apache.lucene.search.payloads.PayloadTermQuery;
 import org.apache.lucene.search.similarities.DefaultSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
-import org.apache.lucene.search.spans.*;
-import org.apache.lucene.store.*;
+import org.apache.lucene.search.spans.SpanFirstQuery;
+import org.apache.lucene.search.spans.SpanNearQuery;
+import org.apache.lucene.search.spans.SpanNotQuery;
+import org.apache.lucene.search.spans.SpanOrQuery;
+import org.apache.lucene.search.spans.SpanQuery;
+import org.apache.lucene.search.spans.SpanTermQuery;
+import org.apache.lucene.store.CompoundFileDirectory;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.LockFactory;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
@@ -54,28 +158,19 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.State;
 import org.apache.lucene.util.automaton.Transition;
 import org.getopt.luke.DocReconstructor.Reconstructed;
-import org.getopt.luke.decoders.*;
+import org.getopt.luke.decoders.BinaryDecoder;
+import org.getopt.luke.decoders.DateDecoder;
+import org.getopt.luke.decoders.Decoder;
+import org.getopt.luke.decoders.NumIntDecoder;
+import org.getopt.luke.decoders.NumLongDecoder;
+import org.getopt.luke.decoders.SolrDecoder;
+import org.getopt.luke.decoders.StringDecoder;
 import org.getopt.luke.plugins.ScriptingPlugin;
 import org.getopt.luke.xmlQuery.CorePlusExtensionsParserFactory;
 import org.getopt.luke.xmlQuery.XmlQueryParserFactory;
+
 import thinlet.FrameLauncher;
 import thinlet.Thinlet;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.ClipboardOwner;
-import java.awt.datatransfer.StringSelection;
-import java.awt.datatransfer.Transferable;
-import java.io.*;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
-import java.util.*;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * This class allows you to browse a <a href="jakarta.apache.org/lucene">Lucene
@@ -89,7 +184,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
 
   private static final long serialVersionUID = -470469999079073156L;
   
-  public static Version LV = Version.LUCENE_CURRENT;
+  public static Version LV = Version.LUCENE_42;
   
   private Directory dir = null;
   String pName = null;
@@ -102,24 +197,24 @@ public class Luke extends Thinlet implements ClipboardOwner {
   private FieldInfos infos = null;
   private IndexInfo idxInfo = null;
   private Map<String, FieldTermCount> termCounts;
-  private List<LukePlugin> plugins = new ArrayList<LukePlugin>();
+  private final List<LukePlugin> plugins = new ArrayList<LukePlugin>();
   private Object errorDlg = null;
   private Object infoDlg = null;
   private Object statmsg = null;
   private Object slowstatus = null;
   private Object slowmsg = null;
-  private Analyzer stdAnalyzer = new StandardAnalyzer(LV);
+  private final Analyzer stdAnalyzer = new StandardAnalyzer(LV);
   //private QueryParser qp = null;
   private boolean readOnly = false;
   private boolean ram = false;
   private boolean keepCommits = false;
-  private boolean multi = false;
+  private final boolean multi = false;
   private int tiiDiv = 1;
   private IndexCommit currentCommit = null;
   private Similarity similarity = null;
   private Object lastST;
-  private HashMap<String, Decoder> decoders = new HashMap<String, Decoder>();
-  private Decoder defDecoder = new StringDecoder();
+  private final HashMap<String, Decoder> decoders = new HashMap<String, Decoder>();
+  private final Decoder defDecoder = new StringDecoder();
   
   /** Default salmon theme. */
   public static final int THEME_DEFAULT     = 0;
@@ -147,7 +242,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
 
   private String baseDir = null;
 
-  private Class[] defaultAnalyzers = { SimpleAnalyzer.class, StandardAnalyzer.class, StopAnalyzer.class,
+  private final Class[] defaultAnalyzers = { SimpleAnalyzer.class, StandardAnalyzer.class, StopAnalyzer.class,
       WhitespaceAnalyzer.class };
 
   private static final String MSG_NOINDEX = "FAILED: No index, or index is closed. Reopen it.";
@@ -414,6 +509,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
       statusSleep = 5000;
     } else {
       statusThread = new Thread() {
+        @Override
         public void run() {
           statusSleep = 5000;
           setString(statmsg, "text", msg);
@@ -451,6 +547,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
       slowSleep = 5000;
     } else {
       slowThread = new Thread() {
+        @Override
         public void run() {
           slowSleep = 5000;
           lastSlowCounter = counter;
@@ -925,7 +1022,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
         Directory dir1 = new RAMDirectory();
         IndexWriterConfig cfg = new IndexWriterConfig(LV, new WhitespaceAnalyzer(LV));
         IndexWriter iw1 = new IndexWriter(dir1, cfg);
-        iw1.addIndexes((Directory[])dirs.toArray(new Directory[dirs.size()]));
+        iw1.addIndexes(dirs.toArray(new Directory[dirs.size()]));
         iw1.close();
         showStatus("RAMDirectory loading done!");
         if (dir != null) dir.close();
@@ -952,7 +1049,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
         ir = readers.get(0);
         dir = ((DirectoryReader)ir).directory();
       } else {
-        ir = new MultiReader((IndexReader[])readers.toArray(new IndexReader[readers.size()]));
+        ir = new MultiReader(readers.toArray(new IndexReader[readers.size()]));
       }
       is = new IndexSearcher(ir);
       // XXX 
@@ -1033,7 +1130,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
     Object pluginsTabs = find("pluginsTabs");
     removeAll(pluginsTabs);
     for (int i = 0; i < plugins.size(); i++) {
-      LukePlugin plugin = (LukePlugin) plugins.get(i);
+      LukePlugin plugin = plugins.get(i);
       addPluginTab(pluginsTabs, plugin);
       plugin.setDirectory(dir);
       plugin.setReader(ir);
@@ -1129,12 +1226,13 @@ public class Luke extends Thinlet implements ClipboardOwner {
       final Object defFld = find("defFld");
       final Object fCombo = find("fCombo");
       TreeSet<String> fields = new TreeSet<String>(fn);
-      idxFields = (String[])fields.toArray(new String[fields.size()]);
+      idxFields = fields.toArray(new String[fields.size()]);
       setString(iFields, "text", String.valueOf(idxFields.length));
       final Object iTerms = find(pOver, "iTerms");
       if (!slowAccess) {
         Thread t = new Thread() {
-          public void run() {
+          @Override
+        public void run() {
             Object r = create("row");
             Object cell = create("cell");
             add(r, cell);
@@ -1208,7 +1306,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       final Object nTerms = find("nTerms");
       if (!slowAccess) {
         Thread t = new Thread() {
-          public void run() {
+          @Override
+        public void run() {
             actionTopTerms(nTerms);
           }
         };
@@ -1324,7 +1423,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
     Iterator<IndexCommit> it = commits.iterator();
     int rowNum = 0;
     while (it.hasNext()) {
-      IndexCommit commit = (IndexCommit)it.next();
+      IndexCommit commit = it.next();
       // figure out the name of the segment files
       Collection<String> files = commit.getFileNames();
       Iterator<String> itf = files.iterator();
@@ -1646,7 +1745,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
     Collections.sort(uFiles);
     List<String> segs = getIndexFileNames(dir);
     List<String> dels = getIndexDeletableNames(dir);
-    Font courier2 = courier.deriveFont((float)courier.getSize() * 1.1f);
+    Font courier2 = courier.deriveFont(courier.getSize() * 1.1f);
     removeAll(filesTable);
     for (int i = 0; i < uFiles.size(); i++) {
       String fileName = uFiles.get(i);
@@ -1727,7 +1826,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
     }
     final String[] fflds = flds;
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           TermStats[] topTerms = HighFreqTerms.getHighFreqTerms(ir, ndoc, fflds);
           Object table = find("tTable");
@@ -1953,7 +2053,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
   
   public void checkIndex(final Object dialog) {
     Thread t = new Thread() {
-      public void run() {
+      @Override
+    public void run() {
         Object panel = find(dialog, "msg");
         Object fixPanel = find(dialog, "fixPanel");
         PanelPrintWriter ppw = new PanelPrintWriter(Luke.this, panel);
@@ -2007,7 +2108,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
   
   public void fixIndex(final Object dialog) {
     Thread t = new Thread() {
-      public void run(){
+      @Override
+    public void run(){
         CheckIndex ci = (CheckIndex)getProperty(dialog, "checkIndex");
         if (ci == null) {
           errorMsg("You need to run 'Check Index' first.");
@@ -2264,7 +2366,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
     final Object counter = find(dialog, "counter");
     final Object msg = find(dialog, "msg");
     Observer obs = new Observer() {
-      public void update(Observable o, Object arg) {
+      @Override
+    public void update(Observable o, Object arg) {
         ProgressNotification pn = (ProgressNotification)arg;
         setInteger(progressBar, "minimum", pn.minValue);
         setInteger(progressBar, "maximum", pn.maxValue);
@@ -2295,7 +2398,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
     exporter = new XMLExporter(ir, pName, decoders);
     exporter.addObserver(obs);
     Thread t = new Thread() {
-      public void run() {
+      @Override
+    public void run() {
         OutputStream os = null;
         try {
           os = new FileOutputStream(out);
@@ -2358,7 +2462,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
    */
   public void optimize(final Object dialog) {
     Thread t = new Thread() {
-      public void run() {
+      @Override
+    public void run() {
         IndexWriter iw = null;
         Object optimizeButton = find(dialog, "optimizeButton");
         setBoolean(optimizeButton, "enabled", false);
@@ -2487,7 +2592,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       org.apache.lucene.util.Bits live = ar.getLiveDocs();
       if (live == null || live.get(iNum)) {
         SlowThread st = new SlowThread(this) {
-          public void execute() {
+          @Override
+        public void execute() {
             try {
               doc = ir.document(iNum);
               _showDocFields(iNum, doc);
@@ -2538,7 +2644,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
     progress.setMessage("Reconstructing ...");
     progress.show();
     Thread thr = new Thread() {
-      public void run() {
+      @Override
+    public void run() {
         try {
           int docNum = nums[0];
           DocReconstructor recon = new DocReconstructor(ir, idxFields, numTerms);
@@ -2583,7 +2690,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
               Object stored = find(editfield, "stored");
               Object restored = find(editfield, "restored");
               if (ar != null) {
-                setBoolean(cbONorms, "selected", ar.normValues(key)!= null);
+                setBoolean(cbONorms, "selected", ar.getNormValues(key)!= null);
               }
               Field f = null;
               if (fields != null && fields.length > i) {
@@ -2804,7 +2911,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
     }
     MoreLikeThis mlt = new MoreLikeThis(ir);
     try {
-      mlt.setFieldNames((String[])Util.fieldNames(ir, true).toArray(new String[0]));
+      mlt.setFieldNames(Util.fieldNames(ir, true).toArray(new String[0]));
     } catch (Exception e) {
       errorMsg("Exception collecting field names: " + e.toString());
       return;
@@ -2922,9 +3029,27 @@ public class Luke extends Thinlet implements ClipboardOwner {
     FieldInfo info = infos.fieldInfo(fName);
     if (f != null) {
       try {
-        if (ar != null && info.hasNorms()) {
-          DocValues norms = ar.normValues(fName);
-          String val = Util.normsToString(norms, fName, docid, sim);
+          if (ar != null && info.hasNorms()) {
+              // export raw value - we don't know what similarity was used
+              String val;
+              BytesRef bytes = new BytesRef();
+              switch(f.fieldType().docValueType()) {
+              case NUMERIC:
+                  NumericDocValues numericDocValues = ar.getNumericDocValues(fName);
+                  val = Long.toString(numericDocValues.get(docid));
+                  break;
+              case BINARY:
+                  BinaryDocValues binaryDocValues = ar.getBinaryDocValues(fName);
+                  binaryDocValues.get(docid, bytes);
+                  val = Util.bytesToHex(bytes, false);
+                  break;
+                case SORTED:
+                    SortedDocValues sortedDocValues = ar.getSortedDocValues(fName);
+                    sortedDocValues.get(docid, bytes);
+                    val = Util.bytesToHex(bytes, false);
+                default:
+                    throw new IllegalStateException("unknown type:" + f.fieldType().docValueType());
+              }                    
           setString(cell, "text", val);
         } else {
           setString(cell, "text", "---");
@@ -2981,7 +3106,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           String fName = (String) getProperty(row, "fName");
           Terms tfv = ar.getTermVector(DocId.intValue(), fName);
@@ -3123,13 +3249,9 @@ public class Luke extends Thinlet implements ClipboardOwner {
     putProperty(dialog, "similarity", s);
     if (ar != null) {
      try {
-       DocValues norms = ar.normValues(f.name());
-       byte curBVal = (byte)norms.getSource().getInt(docNum.intValue());
-       float curFVal = Util.decodeNormValue(curBVal, f.name(), s);
-       setString(curNorm, "text", String.valueOf(curFVal));
-       setString(newNorm, "text", String.valueOf(curFVal));
-       setString(encNorm, "text", String.valueOf(curFVal) +
-          " (0x" + Util.byteToHex(curBVal) + ")");
+       NumericDocValues norms = ar.getNormValues(f.name());
+       setString(curNorm, "text", String.valueOf(norms.get(docNum)));
+       setString(newNorm, "text", String.valueOf(norms.get(docNum)));
      } catch (Exception e) {
        e.printStackTrace();
        errorMsg("Error reading norm: " + e.toString());
@@ -3414,7 +3536,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           String fld = getString(fCombo, "text");
           Terms terms = MultiFields.getTerms(ir, fld);
@@ -3442,7 +3565,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           String text;
           text = getString(fText, "text");
@@ -3516,7 +3640,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           String text;
           Term rawTerm = (Term)getProperty(fText, "term");
@@ -3595,7 +3720,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
     setString(find("tdNum"), "text", "?");
     setString(find("tFreq"), "text", "?");
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         Object dFreq = find("dFreq");
         try {
           int freq = ir.docFreq(t);
@@ -3628,7 +3754,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           DocsEnum td = ar.getContext().reader().termDocsEnum(t);
           if (td == null) {
@@ -3663,7 +3790,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           DocsEnum td = (DocsEnum) getProperty(fText, "td");
           if (td == null) {
@@ -3708,7 +3836,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         
         try {
           FieldInfo fi = infos.fieldInfo(t.field());
@@ -3888,7 +4017,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
     final Query q = new TermQuery(t);
     setString(qFieldParsed, "text", q.toString());
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         IndexSearcher is = null;
         try {
           is = new IndexSearcher(ir);
@@ -4618,7 +4748,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
     final AccessibleHitCollector collector = hc;
     le = null;
     SlowThread t = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         long startTime = System.nanoTime();
         for (int i = 0; i < repeat; i++) {
           if (i > 0) {
@@ -4719,7 +4850,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
   
   private void _showSearchPage(final Object sTable) {
     SlowThread t = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           removeAll(sTable);
           AccessibleHitCollector hc = (AccessibleHitCollector)getProperty(sTable, "hc");
@@ -4806,7 +4938,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
     final Query q = (Query) getProperty(sTable, "query");
     if (q == null) return;
     Thread t = new Thread() {
-      public void run() {
+      @Override
+    public void run() {
         try {
           IndexSearcher is = new IndexSearcher(ir);
           Similarity sim = createSimilarity(find("srchOptTabs"));
@@ -4838,12 +4971,12 @@ public class Luke extends Thinlet implements ClipboardOwner {
     Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, this);    
   }
 
-  private DecimalFormat df = new DecimalFormat("0.0000");
+  private final DecimalFormat df = new DecimalFormat("0.0000");
   private String xmlQueryParserFactoryClassName=CorePlusExtensionsParserFactory.class.getName();
 
   private void addNode(Object tree, Explanation expl) {
     Object node = create("node");
-    setString(node, "text", df.format((double) expl.getValue()) + "  " + expl.getDescription());
+    setString(node, "text", df.format(expl.getValue()) + "  " + expl.getDescription());
     add(tree, node);
     if (getClass(tree) == "tree") {
       setFont(node, getFont().deriveFont(Font.BOLD));
@@ -4866,7 +4999,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         Document doc = null;
         try {
           doc = ir.document(docid.intValue());
@@ -4894,7 +5028,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
       return;
     }
     SlowThread st = new SlowThread(this) {
-      public void execute() {
+      @Override
+    public void execute() {
         try {
           Document doc = ir.document(td.docID());
           setString(find("docNum"), "text", String.valueOf(td.docID()));
@@ -5138,7 +5273,7 @@ public class Luke extends Thinlet implements ClipboardOwner {
     LukePlugin designer = null;
     for (int i = 0; i < plugins.size(); i++) {
       if (plugins.get(i).getClass().getName().equals("org.getopt.luke.plugins.SimilarityDesignerPlugin")) {
-        designer = (LukePlugin)plugins.get(i);
+        designer = plugins.get(i);
         break;
       }
     }
@@ -5162,7 +5297,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
    * Shut down Luke. If {@link #exitOnDestroy} is true (such as when Luke was
    * started from the main method), invoke also System.exit().
    */
-  public boolean destroy() {
+  @Override
+public boolean destroy() {
     if (ir != null) try {
       ir.close();
     } catch (Exception e) {}
@@ -5283,7 +5419,8 @@ public class Luke extends Thinlet implements ClipboardOwner {
    * @see java.awt.datatransfer.ClipboardOwner#lostOwnership(java.awt.datatransfer.Clipboard,
    *      java.awt.datatransfer.Transferable)
    */
-  public void lostOwnership(Clipboard arg0, Transferable arg1) {
+  @Override
+public void lostOwnership(Clipboard arg0, Transferable arg1) {
 
   }
 
